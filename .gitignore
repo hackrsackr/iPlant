@@ -1,1 +1,4 @@
 .pio
+.vscode
+/src/secrets.h*
+/src/config_local.h*
