@@ -22,7 +22,7 @@ bool ADS_Sensor::begin()
     return _p_ads->begin(_i2c_addr);
 }
 
-std::string ADS_Sensor::getSensorUnitType()
+auto ADS_Sensor::getSensorUnitType() -> std::string
 {
     return _ads_sensor_unit;
 }

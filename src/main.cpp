@@ -2,6 +2,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include "Adafruit_VEML7700.h"
 
 #include "config.hpp"
 #include "ADS_Sensor.hpp"
@@ -11,6 +12,7 @@
 std::vector<ADS_Sensor *> _ADCS;
 
 Adafruit_BME280 bme;
+Adafruit_VEML7700 veml = Adafruit_VEML7700();
 
 void setup(void)
 {
@@ -32,6 +34,17 @@ void setup(void)
     {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
     }
+      
+    if (!veml.begin()) {
+    Serial.println("Sensor not found");
+    while (1);
+    }
+
+    Serial.println("Sensor found");
+    
+    veml.setLowThreshold(10000);
+    veml.setHighThreshold(20000);
+    veml.interruptEnable(true);
 }
 
 void loop(void)
@@ -51,5 +64,10 @@ void loop(void)
     
     Serial.println("------------------------------------------");
     
+    Serial.printf("ALS: %2.2f \n", veml.readALS());
+    Serial.printf("White: %2.2f \n", veml.readWhite());
+    Serial.printf("Lux: %2.2f \n", veml.readLux(VEML_LUX_CORRECTED));
+    
+    Serial.println("------------------------------------------");
     delay(_DELAY_MILLISECONDS);
 }
