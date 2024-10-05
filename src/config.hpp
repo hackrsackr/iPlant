@@ -5,19 +5,14 @@
 #include "ADS_Sensor.hpp"
 #include "secrets.hpp"
 
+constexpr auto _DELAY_MILLISECONDS = 2000;
+
 /* Output message option
 true = publish over mqtt
 false = print to serial, to be read by docker container
 */
 // constexpr bool _PUBLISHMQTT = true;
 // constexpr bool _PUBLISHMQTT = false;
-
-/* Pressure control option
-true = test carbonation and vent if neccessary
-false = monitor pressure only
-*/
-constexpr bool _VENT_TO_AIR = true;
-// constexpr bool _VENT_TO_AIR = false;
 
 // WiFi credentials
 constexpr auto _SSID = SECRET_SSID;
@@ -30,11 +25,15 @@ constexpr auto _CLIENTID = "spund-system";
 constexpr auto _SUBTOPIC = "brewcast/history/spark-one";
 constexpr auto _PUBTOPIC = "brewcast/history/spund-system";
 
-// ADS I2C addresses
+// ADS parameters
 constexpr auto ADS1115_ADDRESS1 = 0x48; // ADDR -> GND
 constexpr auto ADS1115_ADDRESS2 = 0x49; // ADDR -> VCC
 constexpr auto ADS1115_ADDRESS3 = 0x4a; // ADDR -> SDA
 constexpr auto ADS1115_ADDRESS4 = 0x4b; // ADDR -> SCL
+
+// BME parameters
+constexpr auto _BME_I2C_ADDR = 0x76;
+constexpr auto _SEALEVELPRESSURE_HPA = 1013.25;
 
 // GPIO Pins (espduino)
 // constexpr uint8_t _I2C_SCL = 25;
