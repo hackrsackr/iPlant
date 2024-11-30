@@ -3,6 +3,7 @@ import time
 import json
 import os
 import smtplib
+
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -12,7 +13,14 @@ from picamera2 import Picamera2
 with open('config.json', 'r') as f:
     cfg = json.load(f)
 
-picam2 = Picamera2()
+# config
+timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
+dir_name = f"{cfg['dir_path']}/{timestamp}"
+os.makedirs(dir_name)
+filepath = f"{dir_name}/output.mp4"
+
+tuning = Picamera2.load_tuning_file("imx477_noir.json")
+picam2 = Picamera2(tuning=tuning)
 config = picam2.create_preview_configuration()
 picam2.configure(config)
 picam2.start()
@@ -23,17 +31,13 @@ picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
 # And wait for those settings to take effect
 time.sleep(1)
 
-# config
-timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
-dir_name = f"{cfg['dir_path']}/{timestamp}"
-os.makedirs(dir_name)
-filepath = f"{dir_name}/output.mp4"
-
 
 start_time = time.time()
 # Take pictures
 for i in range(0, cfg['number_of_photos']):
-    r = picam2.capture_request(wait=cfg['secs_between_photos'])
+    # r = picam2.capture_request(wait=cfg['secs_between_photos'])
+    r = picam2.capture_request()
+    time.sleep(cfg['secs_between_photos'])
     r.save("main", f"{dir_name}/image{i}.jpg")
     r.release()
     print(f"Captured image {i} of {cfg['number_of_photos']} at {time.time() - start_time:.2f}s")
