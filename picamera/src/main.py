@@ -13,7 +13,8 @@ with open('config.json', 'r') as f:
     cfg = json.load(f)
 
 picam2 = Picamera2()
-picam2.configure("still")
+config = picam2.create_preview_configuration()
+picam2.configure(config)
 picam2.start()
 
 # Give time for Aec and Awb to settle, before disabling them
@@ -23,7 +24,7 @@ picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
 time.sleep(1)
 
 # config
-timestamp = time.strftime("%b_%d_%Y_%H:%M")
+timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
 dir_name = f"{cfg['dir_path']}/{timestamp}"
 os.makedirs(dir_name)
 filepath = f"{dir_name}/output.mp4"
@@ -41,7 +42,7 @@ picam2.stop()
 
 # convert jpgs to mp4
 os.chdir(dir_name)
-os.system("ffmpeg -framerate 1 -pattern_type glob -i '*.jpg' -c:v libx264 -r 20 -pix_fmt yuv420p output.mp4")
+os.system("ffmpeg -framerate 1 -pattern_type glob -i '*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p output.mp4")
 
 # Initializing video object
 video_file = MIMEBase('application', "octet-stream")
@@ -56,6 +57,7 @@ encoders.encode_base64(video_file)
 from_addr = cfg['from_addr']
 to_addr = cfg['to_addr']
 subject = f"{cfg['subject']}_{timestamp}"
+content = timestamp
 
 # creating EmailMessage object
 msg = MIMEMultipart()
@@ -64,6 +66,7 @@ msg = MIMEMultipart()
 msg['From'] = from_addr
 msg['To'] = to_addr
 msg['Subject'] = subject
+msg['content'] = content
 
 msg.attach(video_file)
 

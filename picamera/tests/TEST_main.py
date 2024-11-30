@@ -4,7 +4,6 @@ import json
 import os
 import smtplib
 from email import encoders
-# from email.message import EmailMessage
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
@@ -14,7 +13,8 @@ with open('config.json', 'r') as f:
     cfg = json.load(f)
 
 picam2 = Picamera2()
-picam2.configure("still")
+config = picam2.create_preview_configuration()
+picam2.configure(config)
 picam2.start()
 
 # Give time for Aec and Awb to settle, before disabling them
@@ -25,8 +25,8 @@ time.sleep(1)
 
 # config
 # number_of_photos: int = cfg['']
-timestamp = time.strftime("%a_%d_%b_%Y_%H:%M:%S")
-dir_name = f"{cfg['dir_path']}{timestamp}"
+timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
+dir_name = f"{cfg['dir_path']}/{timestamp}"
 os.makedirs(dir_name)
 filepath = f"{dir_name}/output.mp4"
 
@@ -57,7 +57,7 @@ encoders.encode_base64(video_file)
 
 from_addr = cfg['from_addr']
 to_addr = cfg['to_addr']
-subject = cfg['subject']
+subject = f"{cfg['subject']}_{timestamp}"
 content = timestamp
 
 # creating EmailMessage object
