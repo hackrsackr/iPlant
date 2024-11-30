@@ -24,7 +24,6 @@ picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
 time.sleep(1)
 
 # config
-# number_of_photos: int = cfg['']
 timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
 dir_name = f"{cfg['dir_path']}/{timestamp}"
 os.makedirs(dir_name)
