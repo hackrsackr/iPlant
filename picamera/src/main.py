@@ -8,74 +8,81 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
-from picamera2 import Picamera2
+from picamera2 import Picamera2, Preview
 
 with open('config.json', 'r') as f:
     cfg = json.load(f)
 
 # config
-timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
-dir_name = f"{cfg['dir_path']}/{timestamp}"
-os.makedirs(dir_name)
-filepath = f"{dir_name}/output.mp4"
+photos      = cfg['number_of_photos']
+photo_delay = cfg['secs_between_photos']
+app_pwd     = cfg['app_password']
+dir_name    = cfg['dir_path']
+from_addr   = cfg['from_addr']
+to_addr     = cfg['to_addr']
+subject     = cfg['subject']
+preview_on  = cfg['preview_on']
+video       = cfg['convert_to_video']
+send_email  = cfg['send_email']
 
-tuning = Picamera2.load_tuning_file("imx477_noir.json")
-picam2 = Picamera2(tuning=tuning)
-config = picam2.create_preview_configuration()
-picam2.configure(config)
+timestamp   = time.strftime("%b_%d_%Y_%H:%M:%S")
+dir_name    = f"{cfg['dir_path']}/{timestamp}"
+filepath    = f"{dir_name}/output.mp4"
+subject     = f"{cfg['subject']}_{timestamp}"
+
+tuning      = Picamera2.load_tuning_file("imx477_noir.json")
+picam2      = Picamera2(tuning=tuning)
+
+picam2.create_preview_configuration()
+if preview_on: picam2.start_preview(Preview.QT)
+
 picam2.start()
-
-# Give time for Aec and Awb to settle, before disabling them
 time.sleep(1)
-picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
-# And wait for those settings to take effect
+picam2.set_controls({"AeEnable": 0, "AwbEnable": 0, "FrameRate": 1.0})
 time.sleep(1)
 
+os.makedirs(dir_name)
 
-start_time = time.time()
 # Take pictures
-for i in range(0, cfg['number_of_photos']):
-    # r = picam2.capture_request(wait=cfg['secs_between_photos'])
-    r = picam2.capture_request()
-    time.sleep(cfg['secs_between_photos'])
-    r.save("main", f"{dir_name}/image{i}.jpg")
-    r.release()
-    print(f"Captured image {i} of {cfg['number_of_photos']} at {time.time() - start_time:.2f}s")
+start_time = time.time()
+for i in range(0, photos):
+    request = picam2.capture_request()
+    time.sleep(photo_delay)
+    request.save("main", f"{dir_name}/image{i}.jpg")
+    request.release()
+    print(f"Captured image {i} of {photos} at {time.time() - start_time:.2f}s")
 
+picam2.stop_preview()
 picam2.stop()
 
-# convert jpgs to mp4
-os.chdir(dir_name)
-os.system("ffmpeg -framerate 1 -pattern_type glob -i '*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p output.mp4")
+if video:
+    # convert jpgs to mp4
+    os.system(f"ffmpeg -framerate 1 -pattern_type glob -i '{dir_name}/*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p {dir_name}/output.mp4")
 
-# Initializing video object
-video_file = MIMEBase('application', "octet-stream")
+    # Initializing video object
+    video_file = MIMEBase('application', "octet-stream")
 
-# Importing video file
-video_file.set_payload(open(filepath, "rb").read())
-video_file.add_header('content-disposition', 'attachment; filename={}'.format(filepath))
+    # Importing video file
+    video_file.set_payload(open(filepath, "rb").read())
+    video_file.add_header('content-disposition', 'attachment; filename={}'.format(filepath))
 
-# Encoding video for attaching to the email
-encoders.encode_base64(video_file)
+    # Encoding video for attaching to the email
+    encoders.encode_base64(video_file)
 
-from_addr = cfg['from_addr']
-to_addr = cfg['to_addr']
-subject = f"{cfg['subject']}_{timestamp}"
-content = timestamp
+if send_email:
+    # creating EmailMessage object
+    msg = MIMEMultipart()
 
-# creating EmailMessage object
-msg = MIMEMultipart()
+    # Loading message information ---------------------------------------------
+    msg['From']     = from_addr
+    msg['To']       = to_addr
+    msg['Subject']  = f"{subject}_{timestamp}"
+    msg['Content']  = timestamp
 
-# Loading message information ---------------------------------------------
-msg['From'] = from_addr
-msg['To'] = to_addr
-msg['Subject'] = subject
-msg['content'] = content
+    msg.attach(video_file)
 
-msg.attach(video_file)
-
-server = smtplib.SMTP('smtp.gmail.com', 587)
-server.ehlo()
-server.starttls()
-server.login(from_addr, cfg['app_password'])
-server.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    server.login(from_addr, app_pwd)
+    server.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
