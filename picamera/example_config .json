@@ -1,0 +1,9 @@
+{
+  "number_of_photos": 5,
+  "secs_between_photos": 2,
+  "app_password": "xxxx xxxx xxxx xxxx",
+  "dir_path": "/",
+  "from_addr": "example@gmail.com",
+  "to_addr": "example@gmail.com",
+  "subject": "Timelapse"
+}
