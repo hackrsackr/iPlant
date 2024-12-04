@@ -51,20 +51,22 @@ picam2.set_controls({"AeEnable": 0, "AwbEnable": 0, "FrameRate": 1.0})
 time.sleep(1)
 
 # Take pictures
-start_time  = time.time()
+def takePictures():
+    start_time  = time.time()
 
-for i in range(0, photos):
-    request = picam2.capture_request()
-    request.save("main", f"{dir_name}/image{i}.jpg")
-    request.release()
-    print(f"Captured image {i} of {photos} at {time.time() - start_time:.2f}s")
-    time.sleep(photo_delay)
+    for i in range(0, photos):
+        request = picam2.capture_request()
+        request.save("main", f"{dir_name}/image{i}.jpg")
+        request.release()
+        print(f"Captured image {i} of {photos} at {time.time() - start_time:.2f}s")
+        time.sleep(photo_delay)
 
-if preview_on: picam2.stop_preview()
-picam2.stop()
+    if preview_on: picam2.stop_preview()
+    picam2.stop()
+
 
 # Convert photos to timelapse video
-if video:
+def createVideoFile():
     # convert jpgs to mp4
     os.system(f"ffmpeg -framerate 1 -pattern_type glob -i '{dir_name}/*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p {mp4_path}")
 
@@ -76,8 +78,11 @@ if video:
     # Encoding video for attaching to the email
     encoders.encode_base64(video_file)
 
+    return video_file
+
+
 # Email Video
-if send_email:
+def emailVideoFile(video_file):
     recipients = ', '.join(to_addrs)
 
     msg = MIMEMultipart()
@@ -93,3 +98,13 @@ if send_email:
     server.starttls()
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
+
+
+def main():
+    takePictures()
+    if video: mp4 = createVideoFile()
+    if send_email: emailVideoFile(video_file=mp4)
+
+
+if __name__== "__main__":
+    main()
