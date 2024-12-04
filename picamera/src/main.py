@@ -27,10 +27,18 @@ preview_on  = cfg['preview_on']
 video       = cfg['convert_to_video']
 send_email  = cfg['send_email']
 
+# File Setup
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 timestamp   = time.strftime("%b_%d_%Y_%H:%M:%S")
 dir_name    = f"{output_dir}{timestamp}/"
+
+os.makedirs(dir_name)
+
 mp4_path    = f"{dir_name}{mp4_name}"
 
+# Camera Setup
 tuning      = Picamera2.load_tuning_file("imx477_noir.json")
 picam2      = Picamera2(tuning=tuning)
 
@@ -42,23 +50,20 @@ time.sleep(1)
 picam2.set_controls({"AeEnable": 0, "AwbEnable": 0, "FrameRate": 1.0})
 time.sleep(1)
 
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-
-os.makedirs(dir_name)
-
 # Take pictures
-start_time = time.time()
+start_time  = time.time()
+
 for i in range(0, photos):
     request = picam2.capture_request()
-    time.sleep(photo_delay)
     request.save("main", f"{dir_name}/image{i}.jpg")
     request.release()
     print(f"Captured image {i} of {photos} at {time.time() - start_time:.2f}s")
+    time.sleep(photo_delay)
 
-picam2.stop_preview()
+if preview_on: picam2.stop_preview()
 picam2.stop()
 
+# Convert photos to timelapse video
 if video:
     # convert jpgs to mp4
     os.system(f"ffmpeg -framerate 1 -pattern_type glob -i '{dir_name}/*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p {mp4_path}")
@@ -71,11 +76,11 @@ if video:
     # Encoding video for attaching to the email
     encoders.encode_base64(video_file)
 
+# Email Video
 if send_email:
-    msg = MIMEMultipart()
-
     recipients = ', '.join(to_addrs)
 
+    msg = MIMEMultipart()
     msg['From']     = from_addr
     msg['To']       = recipients
     msg['Subject']  = timestamp
