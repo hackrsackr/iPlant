@@ -12,10 +12,10 @@ from email.mime.multipart import MIMEMultipart
 from picamera2 import Picamera2, Preview
 
 
+# Config
 with open('config.json', 'r') as f:
     cfg = json.load(f)
 
-# config
 photos      = cfg['number_of_photos']
 photo_delay = cfg['secs_between_photos']
 mp4_name    = cfg['mp4_name']
@@ -32,18 +32,15 @@ timestamp   = time.strftime("%b_%d_%Y_%H:%M:%S")
 album_name  = f"{output_dir}{timestamp}/"
 mp4_path    = f"{album_name}{mp4_name}"
 
-# Folder Setup
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-
-os.makedirs(album_name)
-
-# Camera Setup
-
-
 def create_timelapse(input_pattern, output_file, fps=30, pix_fmt='yuv420p', codec='libx264') -> MIMEBase:
     """Takes Pictures and creates a timelapse video from the images."""
     
+    # Folder Setup 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    os.makedirs(album_name)
+
     # Take Pictures
     tuning      = Picamera2.load_tuning_file("imx477_noir.json")
     picam2      = Picamera2(tuning=tuning)
@@ -53,7 +50,6 @@ def create_timelapse(input_pattern, output_file, fps=30, pix_fmt='yuv420p', code
     picam2.start()
     
     start_time  = time.time()
-
     for i in range(0, photos):
         request = picam2.capture_request()
         request.save("main", f"{album_name}/image{i}.jpg")
