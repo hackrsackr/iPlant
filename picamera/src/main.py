@@ -2,6 +2,7 @@
 import time
 import json
 import os
+import subprocess
 import smtplib
 
 from email import encoders
@@ -9,6 +10,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
 from picamera2 import Picamera2, Preview
+
 
 with open('config.json', 'r') as f:
     cfg = json.load(f)
@@ -19,7 +21,6 @@ photo_delay = cfg['secs_between_photos']
 mp4_name    = cfg['mp4_name']
 mail_sever  = cfg['email_server_name']
 app_pwd     = cfg['app_password']
-dir_name    = cfg['dir_path']
 output_dir  = cfg['output_folder']
 from_addr   = cfg['from_addr']
 to_addrs    = cfg['to_addrs']
@@ -27,36 +28,35 @@ preview_on  = cfg['preview_on']
 video       = cfg['convert_to_video']
 send_email  = cfg['send_email']
 
-# File Setup
+timestamp   = time.strftime("%b_%d_%Y_%H:%M:%S")
+album_name  = f"{output_dir}{timestamp}/"
+mp4_path    = f"{album_name}{mp4_name}"
+
+# Folder Setup
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-timestamp   = time.strftime("%b_%d_%Y_%H:%M:%S")
-dir_name    = f"{output_dir}{timestamp}/"
-
-os.makedirs(dir_name)
-
-mp4_path    = f"{dir_name}{mp4_name}"
+os.makedirs(album_name)
 
 # Camera Setup
-tuning      = Picamera2.load_tuning_file("imx477_noir.json")
-picam2      = Picamera2(tuning=tuning)
 
-picam2.create_preview_configuration()
-if preview_on: picam2.start_preview(Preview.QT)
 
-picam2.start()
-time.sleep(1)
-picam2.set_controls({"AeEnable": 0, "AwbEnable": 0, "FrameRate": 1.0})
-time.sleep(1)
-
-# Take pictures
-def takePictures():
+def create_timelapse(input_pattern, output_file, fps=30, pix_fmt='yuv420p', codec='libx264') -> MIMEBase:
+    """Takes Pictures and creates a timelapse video from the images."""
+    
+    # Take Pictures
+    tuning      = Picamera2.load_tuning_file("imx477_noir.json")
+    picam2      = Picamera2(tuning=tuning)
+    
+    picam2.create_preview_configuration()
+    if preview_on: picam2.start_preview(Preview.QT)
+    picam2.start()
+    
     start_time  = time.time()
 
     for i in range(0, photos):
         request = picam2.capture_request()
-        request.save("main", f"{dir_name}/image{i}.jpg")
+        request.save("main", f"{album_name}/image{i}.jpg")
         request.release()
         print(f"Captured image {i} of {photos} at {time.time() - start_time:.2f}s")
         time.sleep(photo_delay)
@@ -64,25 +64,31 @@ def takePictures():
     if preview_on: picam2.stop_preview()
     picam2.stop()
 
+    # Create Timelapse video
+    cmd = [
+        'ffmpeg',
+        '-r', str(fps),             # Set the desired frame rate for the output video
+        '-pattern_type', 'glob',    # Use glob pattern matching for input files
+        '-i', input_pattern,        # Input image pattern (e.g., '*.jpg')
+        '-c:v', codec,              # Specify the video codec (e.g., libx264, h265)
+        '-pix_fmt', pix_fmt,        # Set the pixel format (e.g., yuv420p)
+        output_file                 # Output video file
+    ]
+    subprocess.run(cmd)
 
-# Convert photos to timelapse video
-def createVideoFile():
-    # convert jpgs to mp4
-    os.system(f"ffmpeg -framerate 1 -pattern_type glob -i '{dir_name}/*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p {mp4_path}")
-
-    # Initializing video object
     video_file = MIMEBase('application', "octet-stream")
     video_file.set_payload(open(mp4_path, "rb").read())
     video_file.add_header('content-disposition', 'attachment; filename={}'.format(mp4_path))
 
-    # Encoding video for attaching to the email
-    encoders.encode_base64(video_file)
-
     return video_file
 
 
-# Email Video
-def emailVideoFile(video_file):
+def emailTimelapse(video_file: MIMEBase) -> None:
+    ''' Create video file object and encode it for attaching to email'''
+
+    # Encoding video for attaching to the email
+    encoders.encode_base64(video_file)
+
     recipients = ', '.join(to_addrs)
 
     msg = MIMEMultipart()
@@ -101,9 +107,14 @@ def emailVideoFile(video_file):
 
 
 def main():
-    takePictures()
-    if video: mp4 = createVideoFile()
-    if send_email: emailVideoFile(video_file=mp4)
+    vid = create_timelapse(
+        input_pattern=f"{album_name}/*.jpg", 
+        output_file=mp4_path, 
+        fps=1, 
+        pix_fmt='yuv420p', 
+        codec='libx264')
+
+    if send_email: emailTimelapse(vid)
 
 
 if __name__== "__main__":
