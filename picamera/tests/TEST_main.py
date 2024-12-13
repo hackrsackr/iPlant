@@ -138,8 +138,8 @@ def runJob() -> None:
         fps             = 1
         )
     
-# every().day.at("07:00").do(main)
-every(1).minutes.do(runJob)
+every().day.at("07:00").do(runJob)
+# every(1).minutes.do(runJob)
     
 def main() -> None:    
     while True:
