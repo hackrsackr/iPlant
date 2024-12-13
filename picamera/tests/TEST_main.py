@@ -52,15 +52,9 @@ def getMP4Path(album_name: str) -> str:
     return mp4_path
 
 
-
-
-def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
+def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> None:
     """Takes Pictures and creates a timelapse video from the images."""
     
-    # timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
-    # album_name: str     = f"{output_dir}{timestamp}/"
-    # mp4_path: str       = f"{album_name}{mp4_name}"
-
     # Folder Setup 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -69,8 +63,6 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     os.makedirs(f"{album_name}images")
 
     # Take Pictures
-
-    
     start_time: float   = time.time()
     image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
 
@@ -91,7 +83,6 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
 
         time.sleep(photo_delay)
 
-    # picam2.stop()
 
     # Create Timelapse video
     cmd: list = [
@@ -109,13 +100,8 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     video_file.set_payload(open(mp4_path, "rb").read())
     video_file.add_header('content-disposition', 'attachment; filename={}'.format(mp4_path))
 
+    # Delete images file
     shutil.rmtree(f"{album_name}images")
-
-    # return video_file
-
-
-# def emailTimelapse(video_file: MIMEBase) -> None:
-    # ''' Create video file object and encode it for attaching to email'''
 
     # Encoding video for attaching to the email
     encoders.encode_base64(video_file)
@@ -136,10 +122,8 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
-# @repeat(every(2).minutes)
-# @repeat(every(30).seconds)
-def main() -> None:    
 
+def runJob() -> None:    
 
     timestamp = getTimestamp()
     album_name = getAlbumName(timestamp)
@@ -150,17 +134,18 @@ def main() -> None:
         album_name      = album_name,
         mp4_path        = mp4_path,
         input_pattern   = f"{album_name}/images/image*.jpg",
-        output_file = mp4_path, 
-        fps=1
+        output_file     = mp4_path, 
+        fps             = 1
         )
     
 # every().day.at("07:00").do(main)
-every(60).minutes.do(main)
+every(1).minutes.do(runJob)
     
-while True:
-    run_pending()
-    time.sleep(1)
+def main() -> None:    
+    while True:
+        run_pending()
+        time.sleep(1)
 
 
-# if __name__== "__main__":
-    # main()
+if __name__== "__main__":
+    main()
