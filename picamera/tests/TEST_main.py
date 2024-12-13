@@ -13,9 +13,8 @@ from email.mime.multipart import MIMEMultipart
 
 from picamera2 import Picamera2, Preview
 from PIL import Image, ImageDraw, ImageFont
-# from schedule import every, repeat, run_pending
+from schedule import every, repeat, run_pending
 
-# Config
 with open('config.json', 'r') as f:
     cfg = json.load(f)
 
@@ -28,16 +27,40 @@ output_dir: str     = cfg['output_folder']
 from_addr: str      = cfg['from_addr']
 to_addrs: list      = cfg['to_addrs']
 preview_on: bool    = cfg['preview_on']
-video: bool         = cfg['convert_to_video']
-send_email: bool    = cfg['send_email']
+# video: bool         = cfg['convert_to_video']
+# send_email: bool    = cfg['send_email']
 
-timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
-album_name: str     = f"{output_dir}{timestamp}/"
-mp4_path: str       = f"{album_name}{mp4_name}"
+picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477_noir.json"))
+config: dict        = picam2.create_preview_configuration()
+preview: Preview    = Preview.QT if preview_on else Preview.NULL
 
-def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
+picam2.start(config=config, show_preview=preview)
+
+def getTimestamp() -> str:
+    timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
+
+    return timestamp
+
+def getAlbumName(timestamp: str) -> str:
+    album_name: str      = f"{output_dir}{timestamp}/"
+
+    return album_name
+
+def getMP4Path(album_name: str) -> str:
+    mp4_path: str      = f"{album_name}{mp4_name}"
+
+    return mp4_path
+
+
+
+
+def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
     """Takes Pictures and creates a timelapse video from the images."""
     
+    # timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
+    # album_name: str     = f"{output_dir}{timestamp}/"
+    # mp4_path: str       = f"{album_name}{mp4_name}"
+
     # Folder Setup 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -46,11 +69,7 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
     os.makedirs(f"{album_name}images")
 
     # Take Pictures
-    picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477_noir.json"))
-    config: dict        = picam2.create_preview_configuration()
-    preview: Preview    = Preview.QT if preview_on else Preview.NULL
 
-    picam2.start(config=config, show_preview=preview)
     
     start_time: float   = time.time()
     image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
@@ -72,7 +91,7 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
 
         time.sleep(photo_delay)
 
-    picam2.stop()
+    # picam2.stop()
 
     # Create Timelapse video
     cmd: list = [
@@ -92,11 +111,11 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
 
     shutil.rmtree(f"{album_name}images")
 
-    return video_file
+    # return video_file
 
 
-def emailTimelapse(video_file: MIMEBase) -> None:
-    ''' Create video file object and encode it for attaching to email'''
+# def emailTimelapse(video_file: MIMEBase) -> None:
+    # ''' Create video file object and encode it for attaching to email'''
 
     # Encoding video for attaching to the email
     encoders.encode_base64(video_file)
@@ -117,21 +136,31 @@ def emailTimelapse(video_file: MIMEBase) -> None:
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
-# @schedule.repeat(schedule.every(3).minutes)
-def main() -> None:
-    vid: MIMEBase       = create_timelapse(
-        input_pattern   = f"{album_name}/images/image*.jpg", 
-        output_file     = mp4_path, 
-        fps             = 1, 
-        pix_fmt         = 'yuv420p', 
-        codec           = 'libx264')
-
-    if send_email: emailTimelapse(vid)
-
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)
+# @repeat(every(2).minutes)
+# @repeat(every(30).seconds)
+def main() -> None:    
 
 
-if __name__== "__main__":
-    main()
+    timestamp = getTimestamp()
+    album_name = getAlbumName(timestamp)
+    mp4_path = getMP4Path(album_name)
+
+    run(
+        timestamp       = timestamp,
+        album_name      = album_name,
+        mp4_path        = mp4_path,
+        input_pattern   = f"{album_name}/images/image*.jpg",
+        output_file = mp4_path, 
+        fps=1
+        )
+    
+# every().day.at("07:00").do(main)
+every(60).minutes.do(main)
+    
+while True:
+    run_pending()
+    time.sleep(1)
+
+
+# if __name__== "__main__":
+    # main()
