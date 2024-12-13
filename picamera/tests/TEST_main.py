@@ -1,77 +1,137 @@
 #!/usr/bin/python3
-import time
 import json
 import os
-import smtplib
+# import schedule
+import shutil
+import subprocess
+import time
+
+from smtplib import SMTP
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
-from picamera2 import Picamera2
+from picamera2 import Picamera2, Preview
+from PIL import Image, ImageDraw, ImageFont
+# from schedule import every, repeat, run_pending
 
+# Config
 with open('config.json', 'r') as f:
     cfg = json.load(f)
 
-picam2 = Picamera2()
-config = picam2.create_preview_configuration()
-picam2.configure(config)
-picam2.start()
+photos: int         = cfg['number_of_photos']
+photo_delay: int    = cfg['secs_between_photos']
+mp4_name: str       = cfg['mp4_name']
+mail_sever: str     = cfg['email_server_name']
+app_pwd: str        = cfg['app_password']
+output_dir: str     = cfg['output_folder']
+from_addr: str      = cfg['from_addr']
+to_addrs: list      = cfg['to_addrs']
+preview_on: bool    = cfg['preview_on']
+video: bool         = cfg['convert_to_video']
+send_email: bool    = cfg['send_email']
 
-# Give time for Aec and Awb to settle, before disabling them
-time.sleep(1)
-picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
-# And wait for those settings to take effect
-time.sleep(1)
+timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
+album_name: str     = f"{output_dir}{timestamp}/"
+mp4_path: str       = f"{album_name}{mp4_name}"
 
-# config
-timestamp = time.strftime("%b_%d_%Y_%H:%M:%S")
-dir_name = f"{cfg['dir_path']}/{timestamp}"
-os.makedirs(dir_name)
-filepath = f"{dir_name}/output.mp4"
+def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
+    """Takes Pictures and creates a timelapse video from the images."""
+    
+    # Folder Setup 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    os.makedirs(album_name)
+    os.makedirs(f"{album_name}images")
+
+    # Take Pictures
+    picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477_noir.json"))
+    config: dict        = picam2.create_preview_configuration()
+    preview: Preview    = Preview.QT if preview_on else Preview.NULL
+
+    picam2.start(config=config, show_preview=preview)
+    
+    start_time: float   = time.time()
+    image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
+
+    for i in range(0, photos):
+        image_num: int  = i + 1
+        image_path: str = f"{album_name}/images/image{image_num}.jpg"
+        image_text: str = "var_string"
+        request: None   = picam2.capture_request()
+        request.save("main", image_path)
+        request.release()
+        print(f"Captured image {image_num} of {photos} at {time.time() - start_time:.2f}s")
+        img = Image.open(image_path)
+        draw = ImageDraw.Draw(img)
+        os.remove(image_path)
+        draw.text((10, 30), image_text, font=image_font, fill=(255, 255, 255))
+        draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
+        img.save(image_path)
+
+        time.sleep(photo_delay)
+
+    picam2.stop()
+
+    # Create Timelapse video
+    cmd: list = [
+        'ffmpeg',
+        '-r', str(fps),             # Set the desired frame rate for the output video
+        '-pattern_type', 'glob',    # Use glob pattern matching for input files
+        '-i', input_pattern,        # Input image pattern (e.g., '*.jpg')
+        '-c:v', codec,              # Specify the video codec (e.g., libx264, h265)
+        '-pix_fmt', pix_fmt,        # Set the pixel format (e.g., yuv420p)
+        output_file                 # Output video file
+    ]
+    subprocess.run(cmd)
+
+    video_file: MIMEBase = MIMEBase('application', "octet-stream")
+    video_file.set_payload(open(mp4_path, "rb").read())
+    video_file.add_header('content-disposition', 'attachment; filename={}'.format(mp4_path))
+
+    shutil.rmtree(f"{album_name}images")
+
+    return video_file
 
 
-start_time = time.time()
-# Take pictures
-for i in range(0, cfg['number_of_photos']):
-    r = picam2.capture_request(wait=cfg['secs_between_photos'])
-    r.save("main", f"{dir_name}/image{i}.jpg")
-    r.release()
-    print(f"Captured image {i} of {cfg['number_of_photos']} at {time.time() - start_time:.2f}s")
+def emailTimelapse(video_file: MIMEBase) -> None:
+    ''' Create video file object and encode it for attaching to email'''
 
-picam2.stop()
+    # Encoding video for attaching to the email
+    encoders.encode_base64(video_file)
 
-# convert jpgs to mp4
-os.chdir(dir_name)
-os.system("ffmpeg -framerate 1 -pattern_type glob -i '*.jpg' -c:v libx264 -r 30 -pix_fmt yuv420p output.mp4")
+    recipients: str     = ', '.join(to_addrs)
 
-# Initializing video object
-video_file = MIMEBase('application', "octet-stream")
+    msg: MIMEMultipart  = MIMEMultipart()
+    msg['From']         = from_addr
+    msg['To']           = recipients
+    msg['Subject']      = timestamp
+    msg['Content']      = timestamp
 
-# Importing video file
-video_file.set_payload(open(filepath, "rb").read())
-video_file.add_header('content-disposition', 'attachment; filename={}'.format(filepath))
+    msg.attach(video_file)
 
-# Encoding video for attaching to the email
-encoders.encode_base64(video_file)
+    server: SMTP = SMTP(mail_sever, 587)
+    server.ehlo()
+    server.starttls()
+    server.login(from_addr, app_pwd)
+    server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
-from_addr = cfg['from_addr']
-to_addr = cfg['to_addr']
-subject = f"{cfg['subject']}_{timestamp}"
-content = timestamp
+# @schedule.repeat(schedule.every(3).minutes)
+def main() -> None:
+    vid: MIMEBase       = create_timelapse(
+        input_pattern   = f"{album_name}/images/image*.jpg", 
+        output_file     = mp4_path, 
+        fps             = 1, 
+        pix_fmt         = 'yuv420p', 
+        codec           = 'libx264')
 
-# creating EmailMessage object
-msg = MIMEMultipart()
+    if send_email: emailTimelapse(vid)
 
-# Loading message information ---------------------------------------------
-msg['From'] = from_addr
-msg['To'] = to_addr
-msg['Subject'] = subject
-msg['content'] = content
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)
 
-msg.attach(video_file)
 
-server = smtplib.SMTP('smtp.gmail.com', 587)
-server.ehlo()
-server.starttls()
-server.login(from_addr, cfg['app_password'])
-server.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
+if __name__== "__main__":
+    main()

@@ -1,16 +1,17 @@
 #!/usr/bin/python3
-import time
 import json
 import os
+import shutil
 import subprocess
-from smtplib import SMTP
+import time
 
+from smtplib import SMTP
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 
 from picamera2 import Picamera2, Preview
-
+from PIL import Image, ImageDraw, ImageFont
 
 # Config
 with open('config.json', 'r') as f:
@@ -40,6 +41,7 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
         os.makedirs(output_dir)
 
     os.makedirs(album_name)
+    os.makedirs(f"{album_name}images")
 
     # Take Pictures
     picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477_noir.json"))
@@ -49,13 +51,23 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
     picam2.start(config=config, show_preview=preview)
     
     start_time: float   = time.time()
+    image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
 
     for i in range(0, photos):
         image_num: int  = i + 1
+        image_path: str = f"{album_name}/images/image{image_num}.jpg"
+        image_text: str = "var_string"
         request: None   = picam2.capture_request()
-        request.save("main", f"{album_name}/image{image_num}.jpg")
+        request.save("main", image_path)
         request.release()
         print(f"Captured image {image_num} of {photos} at {time.time() - start_time:.2f}s")
+        img = Image.open(image_path)
+        draw = ImageDraw.Draw(img)
+        os.remove(image_path)
+        draw.text((10, 30), image_text, font=image_font, fill=(255, 255, 255))
+        draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
+        img.save(image_path)
+
         time.sleep(photo_delay)
 
     picam2.stop()
@@ -75,6 +87,8 @@ def create_timelapse(input_pattern, output_file, fps: int=30, pix_fmt: str='yuv4
     video_file: MIMEBase = MIMEBase('application', "octet-stream")
     video_file.set_payload(open(mp4_path, "rb").read())
     video_file.add_header('content-disposition', 'attachment; filename={}'.format(mp4_path))
+
+    shutil.rmtree(f"{album_name}images")
 
     return video_file
 
@@ -101,10 +115,9 @@ def emailTimelapse(video_file: MIMEBase) -> None:
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
-
 def main() -> None:
     vid: MIMEBase       = create_timelapse(
-        input_pattern   = f"{album_name}/*.jpg", 
+        input_pattern   = f"{album_name}/images/image*.jpg", 
         output_file     = mp4_path, 
         fps             = 1, 
         pix_fmt         = 'yuv420p', 
