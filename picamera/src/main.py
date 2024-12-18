@@ -129,7 +129,7 @@ def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
-
+@repeat(every(1).minutes)
 def sendTimelapse() -> None:    
     """
     Take images based on config.json inputs
@@ -154,7 +154,7 @@ def sendTimelapse() -> None:
     sendEmail(video_file, timestamp)
 
 # every().day.at("07:00").do(runJob)
-every(1).minutes.do(sendTimelapse)
+# every(1).minutes.do(sendTimelapse)
     
 def main() -> None:    
     while True:
