@@ -27,8 +27,7 @@ from_addr: str      = cfg['from_addr']
 to_addrs: list      = cfg['to_addrs']
 subject: str        = cfg['subject']
 preview_on: bool    = cfg['preview_on']
-# video: bool         = cfg['convert_to_video']
-# send_email: bool    = cfg['send_email']
+
 
 picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477.json"))
 config: dict        = picam2.create_preview_configuration()
@@ -36,20 +35,27 @@ preview: Preview    = Preview.QT if preview_on else Preview.NULL
 
 picam2.start(config=config, show_preview=preview) 
 
+
 def getTimestamp() -> str:
+    """Returns times stamp used for album name"""
     timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
 
     return timestamp
 
+
 def getAlbumName(timestamp: str) -> str:
+    """Returns name of the main directory for images and video"""
     album_name: str      = f"{output_dir}/{timestamp}/"
 
     return album_name
 
+
 def getMP4Path(album_name: str) -> str:
+    """Returns file path of video file"""
     mp4_path: str      = f"{album_name}{mp4_name}"
 
     return mp4_path
+
 
 def takePictures(album_name: str) -> None:
     """Take Pictures for timelapse series"""
@@ -60,7 +66,6 @@ def takePictures(album_name: str) -> None:
     os.makedirs(album_name)
     os.makedirs(f"{album_name}images")
 
-    # Take Pictures
     start_time: float   = time.time()
     image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
 
@@ -82,11 +87,10 @@ def takePictures(album_name: str) -> None:
         time.sleep(photo_delay)
 
 
-
-
 def createVideo(album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
     """Creates a timelapse video from the images."""
-    
+
+    # FFMPEG command 
     cmd: list = [
         'ffmpeg',
         '-r', str(fps),             # Set the desired frame rate for the output video
@@ -106,6 +110,7 @@ def createVideo(album_name: str, mp4_path: str, input_pattern: str, output_file:
     shutil.rmtree(f"{album_name}images")
 
     return video_file
+
 
 def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
     """Email video file"""
@@ -128,6 +133,7 @@ def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
     server.starttls()
     server.login(from_addr, app_pwd)
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
+
 
 @repeat(every(1).minutes)
 def sendTimelapse() -> None:    
@@ -156,6 +162,7 @@ def sendTimelapse() -> None:
 # every().day.at("07:00").do(runJob)
 # every(1).minutes.do(sendTimelapse)
     
+
 def main() -> None:    
     while True:
         run_pending()
