@@ -1,9 +1,16 @@
 {
-  "number_of_photos": 5,
+  "number_of_photos": 2,
   "secs_between_photos": 2,
+  "mp4_name": "timelapse.mp4",
+  "mail_server": "smtp.gmail.com",
   "app_password": "xxxx xxxx xxxx xxxx",
-  "dir_path": "/",
-  "from_addr": "example@gmail.com",
-  "to_addr": "example@gmail.com",
-  "subject": "Timelapse"
+  "output_folder": "./timelapses",
+  "from_addr": "xxx@xxx.xxx",
+  "to_addrs": [
+    "xxx@xxx.xxx"
+  ],
+  "subject": "Timelapse",
+  "preview_on": false,
+  "convert_to_video": true,
+  "send_email": true
 }

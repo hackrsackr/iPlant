@@ -21,20 +21,21 @@ with open('config.json', 'r') as f:
 photos: int         = cfg['number_of_photos']
 photo_delay: int    = cfg['secs_between_photos']
 mp4_name: str       = cfg['mp4_name']
-mail_sever: str     = cfg['email_server_name']
+mail_sever: str     = cfg['mail_server']
 app_pwd: str        = cfg['app_password']
 output_dir: str     = cfg['output_folder']
 from_addr: str      = cfg['from_addr']
 to_addrs: list      = cfg['to_addrs']
+subject: str        = cfg['subject']
 preview_on: bool    = cfg['preview_on']
 # video: bool         = cfg['convert_to_video']
 # send_email: bool    = cfg['send_email']
 
-picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477_noir.json"))
+picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477.json"))
 config: dict        = picam2.create_preview_configuration()
 preview: Preview    = Preview.QT if preview_on else Preview.NULL
 
-picam2.start(config=config, show_preview=preview)
+picam2.start(config=config, show_preview=preview)    # Folder Setup 
 
 def getTimestamp() -> str:
     timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
@@ -42,7 +43,7 @@ def getTimestamp() -> str:
     return timestamp
 
 def getAlbumName(timestamp: str) -> str:
-    album_name: str      = f"{output_dir}{timestamp}/"
+    album_name: str      = f"{output_dir}/{timestamp}/"
 
     return album_name
 
@@ -51,11 +52,9 @@ def getMP4Path(album_name: str) -> str:
 
     return mp4_path
 
+def takePictures(album_name: str) -> None:
+    """ Take Pictures for timelapse series"""
 
-def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> None:
-    """Takes Pictures and creates a timelapse video from the images."""
-    
-    # Folder Setup 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -84,7 +83,11 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
         time.sleep(photo_delay)
 
 
-    # Create Timelapse video
+
+
+def createVideo(album_name: str, mp4_path: str, input_pattern: str, output_file: str, fps: int=30, pix_fmt: str='yuv420p', codec: str='libx264') -> MIMEBase:
+    """Creates a timelapse video from the images."""
+    
     cmd: list = [
         'ffmpeg',
         '-r', str(fps),             # Set the desired frame rate for the output video
@@ -103,6 +106,11 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     # Delete images file
     shutil.rmtree(f"{album_name}images")
 
+    return video_file
+
+def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
+    """Email video file"""
+
     # Encoding video for attaching to the email
     encoders.encode_base64(video_file)
 
@@ -111,7 +119,7 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     msg: MIMEMultipart  = MIMEMultipart()
     msg['From']         = from_addr
     msg['To']           = recipients
-    msg['Subject']      = timestamp
+    msg['Subject']      = subject
     msg['Content']      = timestamp
 
     msg.attach(video_file)
@@ -123,14 +131,20 @@ def run(timestamp: str, album_name: str, mp4_path: str, input_pattern: str, outp
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
 
-def runJob() -> None:    
+def sendTimelapse() -> None:    
+    """
+    Take images based on config.json inputs
+    Creates timelapse video file out of images
+    Sends timelapse video by email
+    """
 
     timestamp = getTimestamp()
     album_name = getAlbumName(timestamp)
     mp4_path = getMP4Path(album_name)
 
-    run(
-        timestamp       = timestamp,
+    takePictures(album_name)
+
+    video_file = createVideo(
         album_name      = album_name,
         mp4_path        = mp4_path,
         input_pattern   = f"{album_name}/images/image*.jpg",
@@ -138,8 +152,10 @@ def runJob() -> None:
         fps             = 1
         )
     
-every().day.at("07:00").do(runJob)
-# every(1).minutes.do(runJob)
+    sendEmail(video_file, timestamp)
+
+# every().day.at("07:00").do(runJob)
+every(1).minutes.do(sendTimelapse)
     
 def main() -> None:    
     while True:
@@ -149,3 +165,7 @@ def main() -> None:
 
 if __name__== "__main__":
     main()
+    # sendTimelapse()
+    # timestamp = getTimestamp()
+    # album_name = getAlbumName(timestamp)
+    # takePictures(album_name)
