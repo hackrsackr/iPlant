@@ -155,7 +155,7 @@ def sendTimelapse() -> None:
     sendEmail(video_file, timestamp)
 
 # every().day.at("07:00").do(runJob)
-every(1).minutes.do(sendTimelapse)
+# every(1).minutes.do(sendTimelapse)
     
 def main() -> None:    
     while True:
@@ -164,8 +164,8 @@ def main() -> None:
 
 
 if __name__== "__main__":
-    main()
-    # sendTimelapse()
+    # main()
+    sendTimelapse()
     # timestamp = getTimestamp()
     # album_name = getAlbumName(timestamp)
     # takePictures(album_name)

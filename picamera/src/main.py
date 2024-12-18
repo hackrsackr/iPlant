@@ -135,7 +135,7 @@ def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
 
-@repeat(every(1).minutes)
+@repeat(every().day.at("07:00"))
 def sendTimelapse() -> None:    
     """
     Take images based on config.json inputs
