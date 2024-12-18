@@ -72,7 +72,7 @@ def takePictures(album_name: str) -> None:
     for i in range(0, photos):
         image_num: int  = i + 1
         image_path: str = f"{album_name}/images/image{image_num}.jpg"
-        image_text: str = "var_string"
+        image_text: str = f"image: {image_num}"
         request: None   = picam2.capture_request()
         request.save("main", image_path)
         request.release()

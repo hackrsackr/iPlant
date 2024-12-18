@@ -68,7 +68,7 @@ def takePictures(album_name: str) -> None:
     for i in range(0, photos):
         image_num: int  = i + 1
         image_path: str = f"{album_name}/images/image{image_num}.jpg"
-        image_text: str = "var_string"
+        image_text: str = f"image: {image_num}"
         request: None   = picam2.capture_request()
         request.save("main", image_path)
         request.release()
@@ -77,7 +77,7 @@ def takePictures(album_name: str) -> None:
         draw = ImageDraw.Draw(img)
         os.remove(image_path)
         draw.text((10, 30), image_text, font=image_font, fill=(255, 255, 255))
-        draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
+        # draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
         img.save(image_path)
 
         time.sleep(photo_delay)
