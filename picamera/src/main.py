@@ -19,6 +19,8 @@ with open('config.json', 'r') as f:
 
 photos: int         = cfg['number_of_photos']
 photo_delay: int    = cfg['secs_between_photos']
+fps: int            = cfg['frames_per_second']
+script_time: str    = cfg['execute_script_time']
 mp4_name: str       = cfg['mp4_name']
 mail_sever: str     = cfg['mail_server']
 app_pwd: str        = cfg['app_password']
@@ -70,7 +72,7 @@ def takePictures(album_name: str) -> None:
     image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
 
     for i in range(0, photos):
-        image_num: int  = i + 1
+        image_num: int  = f"{i + 1:03d}"
         image_path: str = f"{album_name}/images/image{image_num}.jpg"
         image_text: str = f"image: {image_num}"
         request: None   = picam2.capture_request()
@@ -81,7 +83,7 @@ def takePictures(album_name: str) -> None:
         draw = ImageDraw.Draw(img)
         os.remove(image_path)
         draw.text((10, 30), image_text, font=image_font, fill=(255, 255, 255))
-        draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
+        # draw.text((10, 50), image_text, font=image_font, fill=(255, 255, 255))
         img.save(image_path)
 
         time.sleep(photo_delay)
@@ -135,7 +137,7 @@ def sendEmail(video_file: MIMEBase, timestamp: str) -> None:
     server.send_message(msg, from_addr=from_addr, to_addrs=recipients)
 
 
-@repeat(every().day.at("07:00"))
+@repeat(every().day.at(script_time))
 def sendTimelapse() -> None:    
     """
     Take images based on config.json inputs
@@ -154,7 +156,7 @@ def sendTimelapse() -> None:
         mp4_path        = mp4_path,
         input_pattern   = f"{album_name}/images/image*.jpg",
         output_file     = mp4_path, 
-        fps             = 1
+        fps             = fps
         )
     
     sendEmail(video_file, timestamp)
