@@ -26,7 +26,7 @@ constexpr auto _SUBTOPIC = "brewcast/history/spark-one";
 constexpr auto _PUBTOPIC = "brewcast/history/spund-system";
 
 // ADS parameters
-constexpr auto ADS1115_ADDRESS1 = 0x48; // ADDR -> GND
+constexpr auto ADSa115_ADDRESS1 = 0x48; // ADDR -> GND
 constexpr auto ADS1115_ADDRESS2 = 0x49; // ADDR -> VCC
 constexpr auto ADS1115_ADDRESS3 = 0x4a; // ADDR -> SDA
 constexpr auto ADS1115_ADDRESS4 = 0x4b; // ADDR -> SCL
@@ -52,7 +52,6 @@ constexpr auto RELAY_PIN1 = 14;
 constexpr auto RELAY_PIN2 = 03;
 constexpr auto RELAY_PIN3 = 20;
 constexpr auto RELAY_PIN4 = 19;
-            
 
 std::vector<ads_sensor_cfg_t> ads_cfgs{
     {
