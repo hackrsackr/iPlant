@@ -5,7 +5,8 @@
         "reportMissingImports": "none"
     },
     "python.analysis.extraPaths": [
-        "${workspaceFolder}/.venv/bin/lib"
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/.venv/bin/lib/",
     ],
     "python.envFile": "${workspaceFolder}/.env",
     "python.terminal.activateEnvironment": true,
