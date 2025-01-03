@@ -33,7 +33,7 @@ from_addr: str      = cfg['from_addr']
 to_addrs: list      = cfg['to_addrs']
 subject: str        = cfg['subject']
 preview_on: bool    = cfg['preview_on']
-make_video: bool         = cfg['convert_to_video']
+make_video: bool    = cfg['convert_to_video']
 send_email: bool    = cfg['send_email']
 
 picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477.json"))

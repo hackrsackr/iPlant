@@ -17,7 +17,6 @@ from PIL import Image, ImageDraw, ImageFont
 from schedule import every, repeat, run_pending
 
 from BME280 import getTempAndHumidity
-# from BME280 import getTempAndHumidity
 
 with open('config.json', 'r') as f:
     cfg = json.load(f)
@@ -37,7 +36,7 @@ preview_on: bool    = cfg['preview_on']
 make_video: bool    = cfg['convert_to_video']
 send_email: bool    = cfg['send_email']
 
-
+# Camera setup
 picam2: Picamera2   = Picamera2(tuning=Picamera2.load_tuning_file("imx477.json"))
 config: dict        = picam2.create_preview_configuration()
 preview: Preview    = Preview.QT if preview_on else Preview.NULL
@@ -45,29 +44,29 @@ preview: Preview    = Preview.QT if preview_on else Preview.NULL
 picam2.start(config=config, show_preview=preview) 
 
 # BME280 setup
-port = 1
-address = 0x76
+port: int = 1
+address: str = 0x76
 bus = smbus2.SMBus(port)
 calibration_params = bme280.load_calibration_params(bus, address)
 
 
 def getTimestamp() -> str:
     """Returns times stamp used for album name"""
-    timestamp: str      = time.strftime("%b_%d_%Y_%H:%M:%S")
+    timestamp: str = time.strftime("%b_%d_%Y_%H:%M:%S")
 
     return timestamp
 
 
 def getAlbumName(timestamp: str) -> str:
     """Returns name of the main directory for images and video"""
-    album_name: str      = f"{output_dir}/{timestamp}/"
+    album_name: str = f"{output_dir}/{timestamp}/"
 
     return album_name
 
 
 def getMP4Path(album_name: str) -> str:
     """Returns file path of video file"""
-    mp4_path: str      = f"{album_name}{mp4_name}"
+    mp4_path: str = f"{album_name}{mp4_name}"
 
     return mp4_path
 
@@ -82,23 +81,29 @@ def takePictures(album_name: str) -> None:
     os.makedirs(f"{album_name}images")
 
     start_time: float   = time.time()
-    image_font: ImageFont = ImageFont.truetype('FreeMono', 18)
+    image_font: object  = ImageFont.truetype('FreeMono', 18)
+    image_fill: object  = (255, 255, 255)
 
     for i in range(0, photos):
         image_num: int  = f"{i + 1:03d}"
         image_path: str = f"{album_name}/images/image{image_num}.jpg"
         image_text: str = f"image: {image_num}"
-        temperature, humidity = getTempAndHumidity()
+
+        temperature: float, humidity: float = getTempAndHumidity()
+        
         request: None   = picam2.capture_request()
         request.save("main", image_path)
         request.release()
         print(f"Captured image {image_num} of {photos} at {time.time() - start_time:.2f}s")
-        img = Image.open(image_path)
-        draw = ImageDraw.Draw(img, mode="RGBA")
+        
+        img: object = Image.open(image_path)
+        draw: object = ImageDraw.Draw(img, mode="RGBA")
         os.remove(image_path)
-        draw.text((10, 30), image_text, font=image_font, fill=(255, 255, 255))
-        draw.text((10, 50), f"Temp: {temperature:.1f}°f", font=image_font, fill=(255, 255, 255))
-        draw.text((10, 70), f"Humid: {humidity:.1f}%", font=image_font, fill=(255, 255, 255))
+
+        draw.text((10, 320), time.strftime("%b_%d_%Y"), font=image_font, fill=image_fill)
+        draw.text((10, 340), time.strftime("%H:%M:%S"), font=image_font, fill=image_fill)
+        draw.text((10, 360), f"Temp: {temperature:.1f}°f", font=image_font, fill=image_fill)
+        draw.text((10, 380), f"Humid: {humidity:.1f}%", font=image_font, fill=image_fill)
         img.save(image_path)
 
         time.sleep(photo_delay)
@@ -119,7 +124,7 @@ def createVideo(album_name: str, mp4_path: str, input_pattern: str, output_file:
     ]
     subprocess.run(cmd)
 
-    video_file: MIMEBase = MIMEBase('application', "octet-stream")
+    video_file: MIMEBase = MIMEBase('application', 'octet-stream')
     video_file.set_payload(open(mp4_path, "rb").read())
     video_file.add_header('content-disposition', 'attachment; filename={}'.format(mp4_path))
 
@@ -182,8 +187,15 @@ def sendTimelapse() -> None:
 def main() -> None:    
     while True:
         run_pending()
-        time.sleep(1)
 
 
 if __name__== "__main__":
-    main()
+    # DEBUG: bool = True
+    DEBUG: bool = False
+
+    if DEBUG:
+        sendTimelapse()
+    
+    else:
+        main()
+
