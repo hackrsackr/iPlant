@@ -85,7 +85,7 @@ PATH="$VIRTUAL_ENV/bin:$PATH"
 export PATH
 
 if [ "xuv-setup" != x ] ; then
-    VIRTUAL_ENV_PROMPT="(uv-setup) "
+    VIRTUAL_ENV_PROMPT="(pi-cam) "
 else
     VIRTUAL_ENV_PROMPT="($(basename "$VIRTUAL_ENV")) "
 fi

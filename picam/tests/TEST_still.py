@@ -16,7 +16,7 @@ picam2.set_controls({"AeEnable": False, "AwbEnable": False, "FrameRate": 1.0})
 # And wait for those settings to take effect
 time.sleep(1)
 
-number_of_photos: int = 5
+number_of_photos: int = 1
 # date = datetime.date.today()
 # create directory for output
 path = str(datetime.date.today())
@@ -26,7 +26,7 @@ if not isExist:
 
 
 start_time = time.time()
-for i in range(1, number_of_photos):
+for i in range(0, number_of_photos):
     r = picam2.capture_request()
     r.save("main", f"{path}/image{i}.jpg")
     r.release()
