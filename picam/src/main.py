@@ -89,7 +89,7 @@ def takePictures(album_name: str) -> None:
         image_path: str = f"{album_name}/images/image{image_num}.jpg"
         image_text: str = f"image: {image_num}"
 
-        temperature: float, humidity: float = getTempAndHumidity()
+        temperature, humidity = getTempAndHumidity()
         
         request: None   = picam2.capture_request()
         request.save("main", image_path)
